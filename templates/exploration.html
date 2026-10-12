@@ -1,0 +1,144 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Exploratory Analysis - APSRTC AI Forecasting</title>
+  <meta name="description" content="Exploratory data analysis of APSRTC route demand patterns, corridor statistics, and bus occupancy trends." />
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <style>
+    .explore-hero{padding:5rem 1.5rem 2.5rem;text-align:center;position:relative;}
+    .explore-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 70% 50% at 25% 40%,rgba(139,92,246,.12) 0%,transparent 60%),radial-gradient(ellipse 60% 50% at 75% 60%,rgba(6,182,212,.10) 0%,transparent 60%);pointer-events:none;}
+    .explore-title{font-family:'Outfit',sans-serif;font-size:clamp(1.8rem,4vw,2.8rem);font-weight:800;background:linear-gradient(135deg,var(--accent-purple),var(--accent-cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:.6rem;position:relative;}
+    .explore-subtitle{color:var(--text-secondary);font-size:1rem;max-width:600px;margin:0 auto 2rem;position:relative;}
+    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1rem;margin-bottom:2.5rem;}
+    .kpi-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:1.4rem 1.2rem;text-align:center;transition:var(--transition);position:relative;overflow:hidden;}
+    .kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--radius-lg) var(--radius-lg) 0 0;}
+    .kpi-card.blue::before{background:linear-gradient(90deg,var(--accent-blue),var(--accent-cyan));}
+    .kpi-card.purple::before{background:linear-gradient(90deg,var(--accent-purple),var(--accent-blue));}
+    .kpi-card.green::before{background:linear-gradient(90deg,var(--accent-green),var(--accent-cyan));}
+    .kpi-card.orange::before{background:linear-gradient(90deg,var(--accent-orange),var(--accent-red));}
+    .kpi-card.cyan::before{background:linear-gradient(90deg,var(--accent-cyan),var(--accent-green));}
+    .kpi-card.red::before{background:linear-gradient(90deg,var(--accent-red),var(--accent-orange));}
+    .kpi-card:hover{transform:translateY(-4px);border-color:var(--border-accent);box-shadow:var(--shadow-glow);}
+    .kpi-icon{font-size:1.8rem;margin-bottom:.4rem;}
+    .kpi-value{font-family:'Outfit',sans-serif;font-size:2rem;font-weight:800;color:var(--text-primary);}
+    .kpi-label{font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:.25rem;}
+    .kpi-sub{font-size:.72rem;color:var(--text-secondary);margin-top:.2rem;font-style:italic;}
+    .chart-section{margin-bottom:2.5rem;}
+    .chart-section h2{font-family:'Outfit',sans-serif;font-size:1.15rem;font-weight:700;color:var(--text-primary);margin-bottom:1rem;display:flex;align-items:center;gap:.5rem;}
+    .chart-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-lg);padding:1.2rem;overflow:hidden;}
+    .chart-wrapper{width:100%;height:340px;}
+    .table-section{margin-bottom:2.5rem;}
+    .table-section h2{font-family:'Outfit',sans-serif;font-size:1.15rem;font-weight:700;color:var(--text-primary);margin-bottom:1rem;display:flex;align-items:center;gap:.5rem;}
+    .table-scroll{overflow-x:auto;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-lg);}
+    .data-table{width:100%;border-collapse:collapse;font-size:.85rem;min-width:760px;}
+    .data-table th{background:rgba(255,255,255,.05);padding:.8rem 1rem;text-align:left;font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-secondary);border-bottom:1px solid var(--border-color);white-space:nowrap;}
+    .data-table td{padding:.75rem 1rem;border-bottom:1px solid rgba(255,255,255,.04);color:var(--text-primary);white-space:nowrap;}
+    .data-table tbody tr:last-child td{border-bottom:none;}
+    .data-table tbody tr:hover{background:rgba(255,255,255,.03);}
+    .demand-badge{display:inline-block;padding:.2rem .6rem;border-radius:100px;font-size:.72rem;font-weight:600;text-transform:uppercase;}
+    .demand-high{background:rgba(16,185,129,.15);color:var(--accent-green);}
+    .demand-medium{background:rgba(245,158,11,.15);color:var(--accent-orange);}
+    .demand-low{background:rgba(239,68,68,.15);color:var(--accent-red);}
+    .occ-bar-wrap{display:flex;align-items:center;gap:.5rem;}
+    .occ-bar{height:6px;border-radius:3px;background:rgba(255,255,255,.08);width:80px;position:relative;}
+    .occ-fill{position:absolute;top:0;left:0;bottom:0;border-radius:3px;}
+    .charts-row{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:2.5rem;}
+    @media(max-width:760px){.charts-row{grid-template-columns:1fr;}}
+    .explore-content{padding-bottom:4rem;}
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo"><div class="logo-icon">🚌</div>APSRTC AI</a>
+    <div class="nav-links">
+      <a href="/">Home</a>
+      <a href="/prediction">Predict Demand</a>
+      <a href="/optimization">Fleet Optimize</a>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/explore" class="active">📊 Explore</a>
+    </div>
+    <div class="hamburger" aria-label="Menu" role="button" tabindex="0">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
+</nav>
+<div class="page-wrapper">
+  <div class="explore-hero">
+    <h1 class="explore-title">📊 Exploratory Data Analysis</h1>
+    <p class="explore-subtitle">Discover demand patterns, corridor statistics, occupancy trends and route insights across the APSRTC network.</p>
+  </div>
+  <div class="container explore-content">
+    <div class="kpi-grid">
+      <div class="kpi-card blue"><div class="kpi-icon">🛣️</div><div class="kpi-value">{{ summary.routes }}</div><div class="kpi-label">Total Routes</div><div class="kpi-sub">Active APSRTC corridors</div></div>
+      <div class="kpi-card green"><div class="kpi-icon">👥</div><div class="kpi-value">{{ summary.avg_demand }}</div><div class="kpi-label">Avg Base Demand</div><div class="kpi-sub">Passengers per route/day</div></div>
+      <div class="kpi-card purple"><div class="kpi-icon">📏</div><div class="kpi-value">{{ summary.avg_distance }}</div><div class="kpi-label">Avg Distance</div><div class="kpi-sub">km per corridor</div></div>
+      <div class="kpi-card orange"><div class="kpi-icon">📈</div><div class="kpi-value">{{ summary.max_demand }}</div><div class="kpi-label">Peak Demand</div><div class="kpi-sub">{{ summary.max_route.split('-')[0] }}</div></div>
+      <div class="kpi-card cyan"><div class="kpi-icon">🚌</div><div class="kpi-value">{{ summary.bus_types }}</div><div class="kpi-label">Bus Types</div><div class="kpi-sub">Ordinary → Volvo AC</div></div>
+      <div class="kpi-card red"><div class="kpi-icon">📉</div><div class="kpi-value">{{ summary.min_demand }}</div><div class="kpi-label">Min Demand</div><div class="kpi-sub">{{ summary.min_route.split('-')[0] }}</div></div>
+    </div>
+    <div class="charts-row">
+      <div class="chart-section"><h2>📊 Base Demand by Route</h2><div class="chart-card"><div class="chart-wrapper" id="demandBarChart"></div></div></div>
+      <div class="chart-section"><h2>📏 Distance Distribution</h2><div class="chart-card"><div class="chart-wrapper" id="distanceChart"></div></div></div>
+    </div>
+    <div class="chart-section"><h2>🔬 Demand vs. Route Distance (Scatter)</h2><div class="chart-card"><div class="chart-wrapper" id="scatterChart"></div></div></div>
+    <div class="table-section">
+      <h2>📋 Route Summary Table</h2>
+      <div class="table-scroll">
+        <table class="data-table" id="routeTable">
+          <thead><tr><th>#</th><th>Route</th><th>Depot</th><th>Distance</th><th>Base Demand</th><th>Fare</th><th>Frequency</th><th>Occupancy</th><th>Level</th></tr></thead>
+          <tbody>
+          {% for r in routes %}
+          {% set occ = (r.base_demand / 52 * 100) | round(1) %}
+          <tr>
+            <td style="color:var(--text-muted)">{{ loop.index }}</td>
+            <td><strong>{{ r.route }}</strong></td>
+            <td>{{ r.depot }}</td>
+            <td>{{ r.distance_km }} km</td>
+            <td><span style="font-family:'Outfit',sans-serif;font-weight:700;font-size:1rem;">{{ r.base_demand }}</span></td>
+            <td>₹{{ r.fare_per_passenger }}</td>
+            <td style="color:var(--text-secondary);font-size:.8rem;">{{ r.daily_frequency }}</td>
+            <td>
+              <div class="occ-bar-wrap">
+                <div class="occ-bar">
+                  <div class="occ-fill" style="width:{{ [occ,100]|min }}%;background:{% if occ>=80 %}var(--accent-green){% elif occ>=50 %}var(--accent-orange){% else %}var(--accent-red){% endif %};"></div>
+                </div>
+                <span style="font-size:.78rem;color:var(--text-secondary)">{{ occ }}%</span>
+              </div>
+            </td>
+            <td>{% if r.base_demand>=180 %}<span class="demand-badge demand-high">High</span>{% elif r.base_demand>=150 %}<span class="demand-badge demand-medium">Medium</span>{% else %}<span class="demand-badge demand-low">Low</span>{% endif %}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const LAYOUT={paper_bgcolor:'rgba(0,0,0,0)',plot_bgcolor:'rgba(0,0,0,0)',font:{family:'Inter,sans-serif',color:'#94a3b8',size:11},hoverlabel:{bgcolor:'#0f1528',bordercolor:'rgba(255,255,255,.15)',font:{family:'Inter,sans-serif',size:12,color:'#f1f5f9'}}};
+const CFG={responsive:true,displayModeBar:false};
+const routes={{ routes|tojson }};
+const rNames=routes.map(r=>r.route);
+const demands=routes.map(r=>r.base_demand);
+const distances=routes.map(r=>r.distance_km);
+const fares=routes.map(r=>r.fare_per_passenger);
+const freqs=routes.map(r=>r.frequency_multiplier);
+const cols=demands.map(d=>d>=180?'#10b981':d>=150?'#f59e0b':'#ef4444');
+// Bar chart
+Plotly.newPlot('demandBarChart',[{type:'bar',orientation:'h',x:demands,y:rNames,marker:{color:cols},text:demands.map(d=>d+' pax'),textposition:'outside',textfont:{size:9,color:'#94a3b8'},hovertemplate:'<b>%{y}</b><br>%{x} passengers<extra></extra>'}],{...LAYOUT,margin:{t:10,r:60,b:30,l:160},xaxis:{gridcolor:'rgba(255,255,255,.05)',zeroline:false,title:'Demand (pax/day)'},yaxis:{gridcolor:'rgba(255,255,255,.05)',zeroline:false,autorange:'reversed',tickfont:{size:9}}},CFG);
+// Donut
+const bands={'Short <250km':0,'Medium 250-400km':0,'Long >400km':0};
+distances.forEach(d=>{if(d<250)bands['Short <250km']++;else if(d<=400)bands['Medium 250-400km']++;else bands['Long >400km']++;});
+Plotly.newPlot('distanceChart',[{type:'pie',hole:.55,labels:Object.keys(bands),values:Object.values(bands),marker:{colors:['#3b82f6','#8b5cf6','#06b6d4']},textinfo:'label+percent',textfont:{size:11,color:'#f1f5f9'},hovertemplate:'<b>%{label}</b><br>%{value} routes (%{percent})<extra></extra>'}],{...LAYOUT,margin:{t:20,r:20,b:20,l:20},showlegend:true,legend:{font:{color:'#94a3b8',size:10},bgcolor:'rgba(0,0,0,0)'}},CFG);
+// Scatter
+Plotly.newPlot('scatterChart',[{type:'scatter',mode:'markers+text',x:distances,y:demands,text:routes.map(r=>r.route.split('-')[0]),textposition:'top center',textfont:{size:9,color:'#94a3b8'},marker:{size:fares.map(f=>Math.sqrt(f)*.9),color:freqs,colorscale:[[0,'#3b82f6'],[.5,'#8b5cf6'],[1,'#10b981']],showscale:true,colorbar:{title:{text:'Freq. Mult.',font:{color:'#94a3b8',size:10}},tickfont:{color:'#94a3b8',size:10},len:.8,thickness:12},line:{color:'rgba(255,255,255,.15)',width:1},opacity:.85},hovertemplate:'<b>%{text}</b><br>Distance: %{x} km<br>Demand: %{y} pax<extra></extra>'}],{...LAYOUT,margin:{t:20,r:80,b:55,l:55},xaxis:{gridcolor:'rgba(255,255,255,.05)',zeroline:false,title:'Route Distance (km)'},yaxis:{gridcolor:'rgba(255,255,255,.05)',zeroline:false,title:'Base Demand (pax)'}},CFG);
+// Hamburger
+const ham=document.querySelector('.hamburger'),nl=document.querySelector('.nav-links');
+if(ham)ham.addEventListener('click',()=>nl.classList.toggle('open'));
+</script>
+</body>
+</html>

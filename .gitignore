@@ -1,0 +1,15 @@
+﻿__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+.DS_Store
+.idea/
+.vscode/
+# Large binary files - too big for GitHub
+*.pkl
+*.pptx
+generate_apsrtc_presentation.py
+# LFS leftovers
+.git/lfs/
